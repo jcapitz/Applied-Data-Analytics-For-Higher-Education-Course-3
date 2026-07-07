@@ -613,93 +613,132 @@ to confirm the loaded model works correctly.
 
 
 ================================================================================
-MODULE 5.1 — UNSUPERVISED LEARNING (5.1_lesson.ipynb)
+MODULE 5.1 — COURSE BOTTLENECK DETECTION (5.1 main notebook)
 ================================================================================
 
---- 5.1 Prompt 1: Generate Student Entry Data ---
+One use case end to end: cluster 1,000 course sections to discover which
+courses act as bottlenecks, then rank them with a Risk Prioritization Index.
+Data is pre-built in bottleneck.csv (12 variables) — no inline generation.
 
-Generate a synthetic dataset of 1,000 students with these variables:
-- HS_GPA: normal(3.2, 0.45), clipped to 2.0-4.0
-- HS_MATH_GPA: normal(3.0, 0.55), clipped to 1.5-4.0
-- HS_ENGL_GPA: normal(3.1, 0.50), clipped to 1.5-4.0
-- UNITS_ATTEMPTED_1: choice from [9,12,13,14,15,16,17,18]
-- FIRST_GEN: binomial(1, 0.42)
-- PELL_ELIGIBLE: binomial(1, 0.38)
-- DISTANCE_FROM_CAMPUS: exponential(25), clipped to 1-200
+--- 5.1 Prompt 1: Setup and Libraries ---
 
-Use random_state=42. Show descriptive statistics.
+Import numpy, pandas, matplotlib.pyplot, and seaborn, and suppress
+warnings. From scikit-learn import StandardScaler, KMeans, PCA, and
+silhouette_score.
 
-
---- 5.1 Prompt 2: Scale and Show Effect ---
-
-Scale the student data with StandardScaler. Print the before/after
-ranges for HS_GPA and DISTANCE_FROM_CAMPUS to show why scaling matters
-for distance-based algorithms like K-Means.
+Set RANDOM_STATE = 42 and seed numpy with it. Set the seaborn style to
+'whitegrid', default figure size to (10, 6), and font size to 12.
+Print a confirmation message when everything is loaded.
 
 
---- 5.1 Prompt 3: Elbow and Silhouette Analysis ---
+--- 5.1 Prompt 2: Mount Drive and Load the Course Data ---
 
-Run K-Means for k=2 through k=10. For each k, compute inertia and
-silhouette score. Create a 2-panel matplotlib plot:
-- Left: Elbow Method (inertia vs. k) with vertical line at k=4
-- Right: Silhouette Analysis (score vs. k) with vertical line at k=4
+Mount Google Drive. Then load bottleneck.csv into a DataFrame called
+course_df from this path:
+/content/drive/MyDrive/Applied-Data-Analytics-For-Higher-Education-Course-3/data/
 
-
---- 5.1 Prompt 4: Fit K-Means ---
-
-Fit K-Means with k=4 on the scaled student data. Add cluster labels
-to the DataFrame. Print the silhouette score and cluster sizes.
+Print the number of course sections and variables (formatted like
+"Dataset: 1,000 course sections x 12 variables") and display the
+first five rows.
 
 
---- 5.1 Prompt 5: PCA Visualization ---
+--- 5.1 Prompt 3: Descriptive Statistics ---
 
-Apply PCA with 2 components to the scaled data. Create a matplotlib
-scatter plot colored by cluster (using 'Set2' colormap). Label axes
-with PC1/PC2 and their explained variance percentages. Add a colorbar.
-Print total variance explained by the two components.
+Show summary statistics for all variables in course_df, rounded to
+2 decimals.
 
 
---- 5.1 Prompt 6: Cluster Profiling ---
+--- 5.1 Prompt 4: Scale the Data ---
 
-Group the data by cluster and compute means. Print the profile table.
-Then create a seaborn heatmap where colors show z-scored values (to
-highlight what makes each cluster distinctive) but annotations show
-the raw means. Use RdYlGn colormap, centered at 0.
-
-
---- 5.1 Prompt 7: Course Bottleneck Data ---
-
-Generate 1,000 synthetic course sections with: ENROLLMENT (lognormal),
-DFW_RATE (beta), PASS_RATE (beta), AVG_GPA (normal), REPEAT_RATE (beta),
-AVG_REPEAT_DELAY (exponential), SECTION_SIZE (choice), PCT_FIRST_YEAR
-(beta), PCT_STEM (beta), INSTRUCTOR_RATING (normal), PREREQUISITE_COUNT
-(choice), IS_GATEWAY (binomial), UNITS (choice).
+Scale all columns of course_df with StandardScaler into an array called
+course_scaled. Print the shape of the scaled matrix, and print the means
+and standard deviations of the first few columns to confirm they are
+approximately 0 and 1. Explain in a comment why scaling matters for
+K-Means: large-scale variables like ENROLLMENT would otherwise dominate
+small-scale ones like DFW_RATE.
 
 
---- 5.1 Prompt 8: Cluster Courses ---
+--- 5.1 Prompt 5: Silhouette Analysis ---
 
-Scale the course data. Run silhouette analysis for k=2 to 10 with a
-matplotlib plot. Fit K-Means with k=4. Apply PCA and create a scatter
-plot colored by cluster. All in one cell.
+Run K-Means for k = 2 through 10 on the scaled data (n_init=10,
+random_state=42) and compute the silhouette score for each k.
+
+Plot silhouette score vs. k as a green line with circle markers using
+matplotlib (figure size 8x5). Add a red dashed vertical line at k=4
+labeled "k = 4 (chosen)" with a legend. Title: "Silhouette Analysis —
+Course Sections".
 
 
---- 5.1 Prompt 9: Course Profiles ---
+--- 5.1 Prompt 6: Compare k=3 vs k=4 ---
 
-Create cluster profiles for the course data (means per cluster). Print
-the profile table. Create a z-scored seaborn heatmap with RdYlGn_r
-colormap (reversed — red = concerning, green = favorable).
+The silhouette score peaks at k=3, but we want to check whether k=4 is
+more useful. For k=3 and k=4:
+- Fit K-Means (n_init=10, random_state=42) on the scaled data
+- Print the silhouette score
+- Print a table of cluster means for these columns: ENROLLMENT,
+  DFW_RATE, PASS_RATE, REPEAT_RATE, PCT_FIRST_YEAR, IS_GATEWAY,
+  PREREQUISITE_COUNT — plus a count of sections per cluster
+
+We expect to see that the high-DFW "bottleneck" cluster is identical in
+both solutions, and that k=4 simply splits the large healthy group into
+two interpretable types (small upper-division vs. mid-size core).
+
+
+--- 5.1 Prompt 7: Fit K-Means with k=4 ---
+
+Fit K-Means with 4 clusters (n_init=10, random_state=42) on the scaled
+data and add the labels to course_df as a 'Cluster' column. Print the
+number of sections per cluster, sorted by cluster id.
+
+
+--- 5.1 Prompt 8: PCA Visualization ---
+
+Apply PCA with 2 components (random_state=42) to the scaled data.
+Create a matplotlib scatter plot (10x7) of the two components colored
+by cluster using the 'Set2' colormap, with white edge lines on the
+points and a colorbar labeled 'Cluster'. Label each axis with its
+component name and percent of variance explained (e.g. "PC1 (32.5%)").
+Title: "Course Section Segments (PCA)".
+
+
+--- 5.1 Prompt 9: Cluster Profiling with a Two-Panel Heatmap ---
+
+Group course_df by Cluster and compute means; add a Count column and
+print the full profile table.
+
+Then build a figure with TWO stacked seaborn heatmaps (figure size 13x9),
+because one color rule cannot cover all our variables:
+
+Panel 1 — outcome metrics: DFW_RATE, REPEAT_RATE, AVG_REPEAT_DELAY,
+PASS_RATE, AVG_GPA. Before coloring, flip the sign of PASS_RATE and
+AVG_GPA (higher is better for those) so that a higher value always means
+more concerning, then z-score each column across clusters for the colors.
+Use the RdYlGn_r colormap centered at 0, but annotate the cells with the
+RAW cluster means, not the z-scores. Title it so red = concerning,
+green = favorable.
+
+Panel 2 — context variables: ENROLLMENT, SECTION_SIZE, PCT_FIRST_YEAR,
+PCT_STEM, PREREQUISITE_COUNT, IS_GATEWAY, UNITS. Z-score for the colors
+and use the neutral 'Blues' colormap (these variables are descriptive,
+not good or bad — darker just means above average). Annotate with raw
+means. Add linewidths=1 to both panels.
 
 
 --- 5.1 Prompt 10: Risk Prioritization Index ---
 
-Create a composite risk index for each course section:
-- 40% weight: DFW_RATE (normalized)
-- 30% weight: REPEAT_RATE (normalized)
-- 30% weight: 1 - PASS_RATE (normalized)
+Create a RISK_INDEX column in course_df combining three normalized
+factors:
+- 40% weight: DFW_RATE divided by its max
+- 30% weight: REPEAT_RATE divided by its max
+- 30% weight: (1 - PASS_RATE) divided by the max of (1 - PASS_RATE)
 
-Show the top 20 highest-risk sections. Then create two matplotlib plots:
-a boxplot of risk index by cluster and a histogram showing risk
-distribution by cluster.
+Round to 3 decimals. Print the top 20 highest-risk sections showing
+ENROLLMENT, DFW_RATE, PASS_RATE, REPEAT_RATE, IS_GATEWAY, RISK_INDEX,
+and Cluster.
+
+Then create a 2-panel matplotlib figure (14x5): a boxplot of RISK_INDEX
+by cluster on the left, and overlapping histograms of RISK_INDEX per
+cluster (alpha 0.5, 20 bins, with a legend) on the right.
 
 
 ================================================================================
